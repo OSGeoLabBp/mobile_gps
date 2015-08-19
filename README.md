@@ -75,56 +75,55 @@ Database structure
 
 User table schema
 
-* ID integer serial
+* ID serial primary key
 * name char
-* email char (?)
-* password
+* email char unique
+* password MD5
 * ... ?
 
 Point groups schema
 
-* ID integer serial
-* name char
+* ID serial promary key
+* name char unique
 * description
 * ... ?
 
 Track groups schema
 
-* ID integer serial
-* name char
+* ID serial primary key
+* name char unique
 * description char
 * ... ?
 
 Waypoint table schema (WGS84)
 
-* ID integer serial
+* ID serial
 * User_ID integer (foreign key to User table)
-* point (GIS)
-* time_stamp datetime
+* point geometry
+* time_stamp timestamp
 * group_ID (foreign key to Point groups)
 * visibility (private/protected/public)
-* comment char ?
+* comment char
 * ... ?
 
 Track table schema
 
 * ID integer serial
 * User_ID integer (foreign key to User table)
-* polyline (GIS)
-* time_stamp datetime
+* polyline geometry
+* time_stamp timestamp
 * group_ID (foreign key to Track groups)
 * visibility (private/protected/public)
-* comment char ?
+* comment char
 * ... ?
 
-.. NOTE::
-   Using visibility data can be hidden. Private data are visible only for owner,
-   protected data are visible for logged in users, public data are visible for
-   anybody visiting the map.
 
-.. NOTE::
-   Actually waypoints and track can be assigned to one group only.
-   Is it enough?
+> Using visibility data can be hidden. Private data are visible only for owner,
+> protected data are visible for logged in users, public data are visible for
+> anybody visiting the map.
 
-last updated: 16th august 2015
+> Actually waypoints and track can be assigned to one group only.
+ >Is it enough?
+
+last updated: 19th august 2015
 Zoltan Siki
