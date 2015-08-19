@@ -43,9 +43,8 @@ Planned functionality
 * user registration (we don't want to serve storage to the whole world), but
   anybody can browse the map and public data
 
-.. NOTE::
-   Do we need more sophisticated acces rights?
-   Should we create user groups to get more power on user separation?
+> Do we need more sophisticated acces rights?
+> Should we create user groups to get more power on user separation?
 
 Possible applications
 --------------------------------------------------------------------------------
