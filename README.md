@@ -5,19 +5,21 @@ Project proposal
 --------------------------------------------------------------------------------
 
 The aim of the project to create a small application to collect and
-display user positions in their browser on mobile phones, tablest.
-Students can understand its structure easily and can add new functionatily.
+display user positions in their browser on mobile phones, tablets.
+It is so simple that students can understand its structure easily and can add 
+new functionatily.
 
 A client-server solution is planed. Client side uses HTML 5 Geolocation 
 framework to get position and sends the position to server using HTTP GET, 
-it is operating system independent (Android, IOS, WIN mobile).
+it is operating system independent (Android, IOS, WIN mobile platforms are
+supported).
 
 Client side mobile phone can be substituted by NMEA ready GNSS receiver and
-Ulyxes (with an iface object mimic mobile phone).
+Ulyxes (with an iface object mimic mobile phone, **to be developed**).
 
 On the server side positions are collected with time stamps and user ID in a 
-geodatabase (e.g PostGIS). A web map service also provided (WMS or WFS or 
-non-standard AJAX).
+geodatabase (e.g. PostGIS). A web map service also provided (WMS or WFS) and/or 
+non-standard AJAX queries can be used.
 
 Planned functionality
 --------------------------------------------------------------------------------
@@ -28,18 +30,18 @@ Planned functionality
   * add new waypoint by click on the map
   * delete waypoint
   * find waypoint near to the actual position
-  * export waypoints to GPX or KML (PostGIS)
+  * export waypoints to GPX, KML, or other formats (PostGIS, ogr2ogr)
 
-* collect tracks (multi tracks paralel)
+* collect tracks (multi tracks paralel, but single track on a client device)
 
   * start tracking
   * stop tracing
   * erase track
-  * export tracks to GPX or KML (PostGIS)
+  * export tracks to GPX, KML or other formats (PostGIS, ogr2ogr)
 
 * center map on user position, rotate map to user direction???
 * view waypoints, tracks in browser, time range selection
-* acces right handling owner/registered user/other
+* acces right handling owner/registered users/other
 * user registration (we don't want to serve storage to the whole world), but
   anybody can browse the map and public data
 
@@ -67,13 +69,13 @@ Client side
 Server side
 
 * PostgreSQL/PostGIS
-* MapServer
+* MapServer (WFS, WMS)
 * PHP or Python or node.js (?)
 
 Database structure
 --------------------------------------------------------------------------------
 
-*See mobil_gps.sql for SQL script to create the database schema.*
+*See mobil_gps.sql for the SQL script to create the database schema.*
 
 User table schema
 
