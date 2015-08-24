@@ -73,6 +73,8 @@ Server side
 Database structure
 --------------------------------------------------------------------------------
 
+*See mobil_gps.sql for SQL script to create the database schema.*
+
 User table schema
 
 * ID serial primary key
@@ -118,12 +120,13 @@ Track table schema
 * ... ?
 
 
-> Using visibility data can be hidden. Private data are visible only for owner,
+> Using visibility field of track and waypoint table data can be hidden. 
+> Private data are visible only for owner,
 > protected data are visible for logged in users, public data are visible for
 > anybody visiting the map.
 
 > Actually waypoints and track can be assigned to one group only.
- >Is it enough?
+> Is it enough?
 
-last updated: 19th august 2015
+last updated: 24th august 2015
 Zoltan Siki
