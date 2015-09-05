@@ -65,12 +65,14 @@ Client side
 * JavaScript/AJAX
 * jQuery
 * OpenLayers 2/3 (and/or Google Maps API 3?)
+* sensor widgets http://blog.geomati.co/post/128324865623/sensor-widgets-monitor-your-real-time-sensor-data ???
 
 Server side
 
 * PostgreSQL/PostGIS
 * MapServer (WFS, WMS)
 * PHP or Python or node.js (?)
+* SOS server ???
 
 Database structure
 --------------------------------------------------------------------------------
