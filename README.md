@@ -21,6 +21,9 @@ On the server side positions are collected with time stamps and user ID in a
 geodatabase (e.g. PostGIS). A web map service also provided (WMS or WFS) and/or 
 non-standard AJAX queries can be used.
 
+Further development direction to use other sensores of mobile device, orientation 
+and motion. It can be used for indoor navigation and step counting.
+
 Planned functionality
 --------------------------------------------------------------------------------
 
@@ -64,8 +67,10 @@ Client side
 * HTML 5
 * JavaScript/AJAX
 * jQuery
-* OpenLayers 2/3 (and/or Google Maps API 3?)
+* OpenLayers 2/3 (and/or Google Maps API 3?) GeoLocation (http://openlayers.org/en/v3.9.0/apidoc/ol.Geolocation.html)
 * sensor widgets http://blog.geomati.co/post/128324865623/sensor-widgets-monitor-your-real-time-sensor-data ???
+* DeviceOrientation event (http://goo.gl/wA1FAA)
+* DeviceMotion event (http://goo.gl/nEAOlg) http://www.html5rocks.com/en/tutorials/device/orientation
 
 Server side
 
@@ -79,51 +84,6 @@ Database structure
 
 *See mobil_gps.sql for the SQL script to create the database schema.*
 
-User table schema
-
-* ID serial primary key
-* name char
-* email char unique
-* password MD5
-* ... ?
-
-Point groups schema
-
-* ID serial promary key
-* name char unique
-* description
-* ... ?
-
-Track groups schema
-
-* ID serial primary key
-* name char unique
-* description char
-* ... ?
-
-Waypoint table schema (WGS84)
-
-* ID serial
-* User_ID integer (foreign key to User table)
-* point geometry
-* time_stamp timestamp
-* group_ID (foreign key to Point groups)
-* visibility (private/protected/public)
-* comment char
-* ... ?
-
-Track table schema
-
-* ID integer serial
-* User_ID integer (foreign key to User table)
-* polyline geometry
-* time_stamp timestamp
-* group_ID (foreign key to Track groups)
-* visibility (private/protected/public)
-* comment char
-* ... ?
-
-
 > Using visibility field of track and waypoint table data can be hidden. 
 > Private data are visible only for owner,
 > protected data are visible for logged in users, public data are visible for
@@ -132,5 +92,4 @@ Track table schema
 > Actually waypoints and track can be assigned to one group only.
 > Is it enough?
 
-last updated: 24th august 2015
 Zoltan Siki
