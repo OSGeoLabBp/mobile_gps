@@ -56,8 +56,13 @@ Possible applications
 
 * VGI (Voluntary Geographical Information)
 * Multi vehicle tracing system
-* Collect sport activities (runing, cyling, etc.)
+* Collect sport activities (runing, cycling, etc.)
 * ... ?
+
+Concrete application plans
+
+* Bicycle parking places/Bubi stations
+* Blue parking (CLGE project to collect parking place positions for handicapped people)
 
 Software base components
 --------------------------------------------------------------------------------
@@ -65,8 +70,9 @@ Software base components
 Client side
 
 * HTML 5
-* JavaScript/AJAX
-* jQuery
+* JavaScript
+* jQuery/AJAX/UI
+* Bootstrap (responsivity)
 * OpenLayers 2/3 (and/or Google Maps API 3?) GeoLocation (http://openlayers.org/en/v3.9.0/apidoc/ol.Geolocation.html)
 * sensor widgets http://blog.geomati.co/post/128324865623/sensor-widgets-monitor-your-real-time-sensor-data ???
 * DeviceOrientation event (http://goo.gl/wA1FAA)
