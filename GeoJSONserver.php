@@ -15,6 +15,7 @@ class GeoJSONserver {
     protected $table = '';
     protected $item = null;
     protected $method = '';
+    protected $user = null;
     protected $request = array();
     
     public function __construct($opt_options = '') {
@@ -44,22 +45,6 @@ class GeoJSONserver {
           'authRequired' => true,
           'authRealm'    => 'GeoJSONserver'
         );
-    
-        // Connect to PostgreSQL database using PHP's Database Object class
-        // http://php.net/manual/en/class.pdo.php
-        try {
-            $this->db = new PDO('pgsql:host=' . $this->options['HOST'] . ';port=' . $this->options['PORT'] . ';dbname=' . $this->options['DB'], $this->options['USER'], $this->options['PASS']);
-            $this->db->exec("set names utf8");
-        } catch (PDOException $e) {
-            $this->response( $e->getMessage(), 500);
-        }
-        
-        // Basic authentication
-        if ($this->options['authRequired']) {
-            // TODO: query users from database
-            $valid_users = null;
-            $this->auth($valid_users, $this->options['authRealm']);
-        }
         
         // Following the key principles of REST, each resource is represented by a URL,
         // where the action is the HTTP method used to access it.
@@ -75,22 +60,40 @@ class GeoJSONserver {
         
         // Retrieve the table and item ID from the URL
         // The $_GET['url'] is passed with .htaccess rewrite
-        $url = explode('/', $_GET['url']);
-        $this->table = preg_replace('/[^a-z0-9_]+/i', '', array_shift((array)$url));
-        $this->item = preg_replace('/[^0-9]+/i', '', array_shift((array)$url));
-        unset($_GET['url']); // we don't need this anymore
+        if (isset($_GET['url'])) {
+            $url = explode('/', $_GET['url']);
+            $this->table = preg_replace('/[^a-z0-9_]+/i', '', array_shift($url));
+            $this->item = preg_replace('/[^0-9]+/i', '', array_shift($url));
+            unset($_GET['url']); // we don't need this anymore
+        }
         
         // Get the HTTP method
         // in some cases DELETE and PUT requests are hidden inside a POST 
-        $this->method = @trim($_SERVER['REQUEST_METHOD']);
+        if (isset($_SERVER['REQUEST_METHOD'])) {
+            $this->method = trim($_SERVER['REQUEST_METHOD']);
+        }
         if ($this->method == 'POST' && array_key_exists('HTTP_X_HTTP_METHOD', $_SERVER)) {
             if ($_SERVER['HTTP_X_HTTP_METHOD'] == 'DELETE') {
                 $this->method = 'DELETE';
-            } else if ($_SERVER['HTTP_X_HTTP_METHOD'] == 'PUT') {
+            } elseif ($_SERVER['HTTP_X_HTTP_METHOD'] == 'PUT') {
                 $this->method = 'PUT';
             }
         }
-
+    
+        // Connect to PostgreSQL database using PHP's Database Object class
+        // http://php.net/manual/en/class.pdo.php
+        try {
+            $this->db = new PDO('pgsql:host=' . $this->options['HOST'] . ';port=' . $this->options['PORT'] . ';dbname=' . $this->options['DB'], $this->options['USER'], $this->options['PASS']);
+            $this->db->exec("set names utf8");
+        } catch (PDOException $e) {
+            $this->response( $e->getMessage(), 500);
+            return;
+        }
+        
+        // Basic authentication
+        if ($this->options['authRequired']) {
+            $this->user = $this->authenticate($this->options['authRealm']);
+        }
     }
     
     public function __destruct() {
@@ -105,8 +108,8 @@ class GeoJSONserver {
      * PUT - used to modify (UPDATE) an existing object on the server
      * DELETE - used to remove (DELETE) an object on the server
      */
-    public function run() {
-        switch($this->method) {
+    public function start() {
+        switch ($this->method) {
             case 'GET':
                 $this->request = $_GET;
                 $this->response(
@@ -146,6 +149,8 @@ class GeoJSONserver {
      * @param integer $code optional HTTP status code default 200
      */
     protected function response($data, $code = 200) {
+        if (!is_array($data)) $data = array('message' => $data);
+      
         $json = json_encode($data);
         $hash = md5($json);
         $status = array(  
@@ -162,7 +167,7 @@ class GeoJSONserver {
         );
         
         // Set HTTP status code in the header
-        header('HTTP/1.1 ' . $status . ' ' . (isset($status[$code]) ? $status[$code] : $status[500]);
+        header('HTTP/1.1 ' . $code . (isset($status[$code]) ? ' ' . $status[$code] : ''));
         header('Content-Type: application/json');
         
         // Enable open access across domains (CORS)
@@ -182,24 +187,37 @@ class GeoJSONserver {
 
         // Write data to the output
         echo $json;
-        // exit; // need to close the output here?
+        exit; // need to close the output here?
     }
     
     /**
      * Basic HTTP authentication
-     * @param array $valid_users (key: username, value: password hash)
      * @param string $realm
      */
-    protected function auth($valid_users, $realm = '') {
-        if (!isset($_SERVER['PHP_AUTH_USER'])) {
-            header('WWW-Authenticate: Basic realm="' . (!empty(realm) ? realm : 'myAPI') . '"');
-            $this->response('Enter the username and password!', 401);
-        } elseif (!($_SERVER['PHP_AUTH_USER']=='user' && $_SERVER['PHP_AUTH_PW']=='pass')) {
-            // TODO: basic auth from $valid_users
-            $this->response('Authentication required!', 403);
+    protected function authenticate($realm = '') {
+        if (isset($_SERVER['PHP_AUTH_USER']) && isset($_SERVER['PHP_AUTH_PW'])) {
+            $user = preg_replace('/[^a-z0-9_\.\@]+/i', '', $_SERVER['PHP_AUTH_USER']);
+            // no passwords are stored, we compare their one-way encrypted hash
+            $pass = crypt($_SERVER['PHP_AUTH_PW'], base64_encode($_SERVER['PHP_AUTH_PW']));
+            $query = $this->db->prepare('SELECT * FROM users WHERE email = :email AND password = :password');
+            $query->execute(array(':email' => $user, ':password' => $pass));
+            // TODO: prevent brute force attack (max 3 failed login in 30 minutes)
+            // if ($_SESSION['failed-login-count'] >= 3 && $_SESSION['last-failed-login'] > (time() - 30)) {}
+            if ($query->rowCount() === 1 ) {
+                $this->user = $query->fetch(PDO::FETCH_ASSOC);
+                return true;
+            } else {
+                $this->response('Wrong username and/or password!', 403);
+                return false;
+            }
+        } else {
+            // FIXME: basic auth sends credentials per request. This is really bad without https. (Maybe OAuth2, Facebook)
+            header('WWW-Authenticate: Basic realm="' . (!empty($realm) ? $realm : 'myAPI') . '"');
+            $this->response('Authentication required!', 401);
+            return false;
         }
     }
-    
+
     /**
      * READ records from table
      * @param string $table table name
@@ -220,8 +238,13 @@ class GeoJSONserver {
             return false;
         }
         
-        // TODO: where user_id = USERID
-        if (isset($id)) {
+        // Check user rights
+        if (isset($this->user['id'])) {
+            $where[] = 'user = ' . $this->user['id'];
+        }
+      
+        // Other filters
+        if ($id !== '') {
             $where[] = 'id = ' . $id;
         } elseif (isset($request['bbox'])) {
             // If bbox variable is set, only return records that are within the bounding box
@@ -231,7 +254,7 @@ class GeoJSONserver {
         }
         
         // Create the SQL query
-        $sql = 'SELECT *, ST_AsGeoJSON(ST_Transform((' . $geomName . '), ' . $viewSRID . '), 6) AS geojson FROM ' . $table . (isset($where) ? ' WHERE ' . implode(' AND ',$where) : '');
+        $sql = 'SELECT *, ST_AsGeoJSON(ST_Transform((' . $geomName . '), ' . $viewSRID . '), 6) AS geometry FROM ' . $table . (isset($where) ? ' WHERE ' . implode(' AND ',$where) : '');
 
         // Try query or error
         $query = $this->db->prepare($sql);
@@ -248,16 +271,15 @@ class GeoJSONserver {
         );
 
         // Loop through rows to build feature arrays
-        while ($row = $rs->fetch(PDO::FETCH_ASSOC)) {
-            $properties = $row;
-            // Remove geojson and geometry fields from properties
-            unset($properties['geojson']);
-            unset($properties[$geomName]);
+        while ($row = $query->fetch(PDO::FETCH_ASSOC)) {
             $feature = array(
                 'type'        => 'Feature',
-                'geometry'    => json_decode($row['geojson'], true),
-                'properties'  => $properties
+                'geometry'    => json_decode($row['geometry'], true),
+                'properties'  => $row
             );
+            // Remove geometry fields from properties
+            unset($feature['properties']['geometry']);
+            unset($feature['properties'][$geomName]);
             // Add feature arrays to feature collection array
             array_push($geojson['features'], $feature);
         }
@@ -284,10 +306,11 @@ class GeoJSONserver {
             $this->response('Table not found or allowed.', 404);
             return false;
         }
-
-        // TODO: set user_id = USERID server side
         
         // Collect the witeable columns and column types from requested table
+        $columns = array();
+        $values = array();
+        $types = array();
         foreach ($writeable[$table] as $attribute) {
             $attribute = explode(':', $attribute);
             $columns[] = $attribute[0];
@@ -303,49 +326,15 @@ class GeoJSONserver {
         $sql = 'INSERT INTO ' . $table . ' ( ' . implode(', ', $columns) . ' ) VALUES ( ' . implode(', ', $values) . ' )';
         $query = $this->db->prepare($sql);
 
+        // Grant user rights
+        if (isset($this->user['id'])) {
+            $query->bindParam(':user_id', $this->user['id']);
+            unset($request['user_id']); // just in case
+        }
+        
         // Loop through required columns
         for ($i = 0; $i < count($columns); $i++) {
-            if (isset($request[$columns[$i]])) {
-                $values[$i] = $request[$columns[$i]];
-                
-                // sanitize input based on predefined types
-                switch ($types[$i]) {
-                    case 'boolean':
-                        $values[$i] = (bool)$values[$i];
-                        break;
-                    case 'numeric':
-                        $values[$i] = (float)$values[$i];
-                        break;
-                    case 'date':
-                        $values[$i] = date('Y-m-d', strtotime($values[$i]));
-                        break;
-                    case 'datetime':
-                        $values[$i] = date('Y-m-d H:i:s', strtotime($values[$i]));
-                        break;
-                    case 'timestamp':
-                        $values[$i] = strtotime($values[$i]);
-                        break;
-                    case 'json':
-                        // enabled: a-zA-Z0-9_ [](){}.,\'"-:+
-                        $values[$i] = preg_replace("([^\w\s\[\]\(\)\{\}\.\,\\\'\"\-\:\+])", '', $values[$i]);
-                        $values[$i] = str_replace('\"','"',$values[$i]); // unescape quotes, to be sure 
-                        //$values[$i] = json_decode($values[$i], true); // this will be null if not valid JSON
-                        break;
-                    case 'string':
-                    default:
-                        // enabled: a-zA-Z0-9_ [](){}.,!?@\/'"-*%:=+öÖüÜóÓőŐúÚéÉáÁűŰíÍ
-                        $values[$i] = preg_replace("([^\w\s\[\]\(\)\{\}\.\,\!\?\@\\\/\'\"\-\*\%\:\=\+öÖüÜóÓőŐúÚéÉáÁűŰíÍ])", '', $values[$i]);
-                        break;
-                }
-                if ($values[$i] == '') {
-                    $values[$i] = null;
-                }
-                // Bind parameters (escape quotes automatically) to prevent SQL injection
-                $query->bindParam(':'.$columns[$i], $values[$i]);
-            } else {
-                $this->response('Required attributes: ' . implode(', ', $columns), 400);
-                return false;
-            }
+            $this->bindParamFromRequest($query, $columns[$i], $request, $types[$i]);
         }
 
         // Try query or error
@@ -379,9 +368,11 @@ class GeoJSONserver {
             return false;
         }
         
-        // TODO: set user_id = USERID server side
-        
         // Collect the witeable columns and column types from requested table
+        $columns = array();
+        $values = array();
+        $types = array();
+        $columns_and_values = array();
         foreach ($writeable[$table] as $attribute) {
             $attribute = explode(':', $attribute);
             $columns[] = $attribute[0];
@@ -398,50 +389,16 @@ class GeoJSONserver {
         $sql = 'UPDATE ' . $table . ' SET ' . $columns_and_values . ' WHERE id = :id';
         $query = $this->db->prepare($sql);
         $query->bindParam(':id', $id);
+
+        // Grant user rights
+        if (isset($this->user['id'])) {
+            $query->bindParam(':user_id', $this->user['id']);
+            unset($request['user_id']); // just in case
+        }
         
         // Loop through required columns
         for ($i = 0; $i < count($columns); $i++) {
-            if (isset($request[$columns[$i]])) {
-                $values[$i] = $request[$columns[$i]];
-                
-                // sanitize input based on predefined types
-                switch ($types[$i]) {
-                    case 'boolean':
-                        $values[$i] = (bool)$values[$i];
-                        break;
-                    case 'numeric':
-                        $values[$i] = (float)$values[$i];
-                        break;
-                    case 'date':
-                        $values[$i] = date('Y-m-d', strtotime($values[$i]));
-                        break;
-                    case 'datetime':
-                        $values[$i] = date('Y-m-d H:i:s', strtotime($values[$i]));
-                        break;
-                    case 'timestamp':
-                        $values[$i] = strtotime($values[$i]);
-                        break;
-                    case 'json':
-                        // enabled: a-zA-Z0-9_ [](){}.,\'"-:+
-                        $values[$i] = preg_replace("([^\w\s\[\]\(\)\{\}\.\,\\\'\"\-\:\+])", '', $values[$i]);
-                        $values[$i] = str_replace('\"','"',$values[$i]); // unescape quotes, to be sure 
-                        //$values[$i] = json_decode($values[$i], true); // this will be null if not valid JSON
-                        break;
-                    case 'string':
-                    default:
-                        // enabled: a-zA-Z0-9_ [](){}.,!?@\/'"-*%:=+öÖüÜóÓőŐúÚéÉáÁűŰíÍ
-                        $values[$i] = preg_replace("([^\w\s\[\]\(\)\{\}\.\,\!\?\@\\\/\'\"\-\*\%\:\=\+öÖüÜóÓőŐúÚéÉáÁűŰíÍ])", '', $values[$i]);
-                        break;
-                }
-                if ($values[$i] == '') {
-                    $values[$i] = null;
-                }
-                // Bind parameters (escape quotes automatically) to prevent SQL injection
-                $query->bindParam(':'.$columns[$i], $values[$i]);
-            } else {
-                $this->response('Required attributes: ' . implode(', ', $columns), 400);
-                return false;
-            }
+            $this->bindParamFromRequest($query, $columns[$i], $request, $types[$i]);
         }
         
         // Try query or error
@@ -471,8 +428,11 @@ class GeoJSONserver {
             return false;
         }
         
+        // Check user rights
+        $where = (isset($this->user['id']) ? ' AND user = ' . $this->user['id'] : '');
+      
         // Create the SQL query
-        $sql = 'DELETE FROM ' . $table . ' WHERE id = :id';
+        $sql = 'DELETE FROM ' . $table . ' WHERE id = :id' . $where;
         $query = $this->db->prepare($sql);
         $query->bindParam(':id', $id);
         
@@ -486,4 +446,57 @@ class GeoJSONserver {
         return array('rowCount' => $query->rowCount());
     }
     
+    /**
+     * Cleans a request parameter and binds to the specified variable name
+     * @param PDOStatement $query PDO statement handler
+     * @param string $parameter the name of the parameter
+     * @param array $request the request array, e.g.: $_POST
+     * @param string $data_type optional data type, default is string
+     * @return boolean result of the original bindParam method
+     */
+    protected function bindParamFromRequest(&$query, $parameter, $request, $data_type = 'string') {
+      
+        if (!isset($request[$parameter])) {
+            $this->response($parameter.' attribute required.', 400);
+            return false;
+        } else {
+            $value = $request[$parameter];
+        }
+      
+        // sanitize input based on predefined types
+        switch ($data_type) {
+            case 'boolean':
+                $value = (bool)$value;
+                break;
+            case 'numeric':
+                $value = (float)$value;
+                break;
+            case 'date':
+                $value = date('Y-m-d', strtotime($value));
+                break;
+            case 'datetime':
+                $value = date('Y-m-d H:i:s', strtotime($value));
+                break;
+            case 'timestamp':
+                $value = strtotime($value);
+                break;
+            case 'json':
+                // enabled: a-zA-Z0-9_ [](){}.,\'"-:+
+                $value = preg_replace("([^\w\s\[\]\(\)\{\}\.\,\\\'\"\-\:\+])", '', $value);
+                $value = str_replace('\"','"',$value); // unescape quotes, to be sure 
+                //$value = json_decode($value, true); // this will be null if not valid JSON
+                break;
+            case 'string':
+            default:
+                // enabled: a-zA-Z0-9_ [](){}.,!?@\/'"-*%:=+öÖüÜóÓőŐúÚéÉáÁűŰíÍ
+                $value = preg_replace("([^\w\s\[\]\(\)\{\}\.\,\!\?\@\\\/\'\"\-\*\%\:\=\+öÖüÜóÓőŐúÚéÉáÁűŰíÍ])", '', $value);
+                break;
+        }
+        if ($value == '') {
+            $value = null;
+        }
+      
+        // Bind parameters (escape quotes automatically) to prevent SQL injection
+        return $query->bindParam(':'.$parameter, $value);
+    }
 }

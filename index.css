@@ -1,18 +1,56 @@
+.ol-zoom {
+  right: .5em;
+  left: auto;
+  top: auto;
+  bottom: 0.5em;
+}
+.ol-zoomslider {
+  right: .5em;
+  left: auto;
+  top: 50%;
+  bottom: auto;
+  margin-top: -100px;
+}
+.ol-rotate {
+  position: absolute;
+  top: auto;
+  bottom: 4.5em;
+}
+.ol-save-feature {
+  position: absolute;
+  top: 2.5em;
+  left: 0.5em;
+}
+.ol-delete-feature {
+  position: absolute;
+  top: 4.5em;
+  left: 0.5em;
+}
 .ol-geolocate {
   position: absolute;
   top: 0.5em;
   left: 0.5em;
 }
-.ol-zoomslider {
-	right: .5em;
-	left: auto;
-	top: 50%;
-  bottom: auto;
-	margin-top: -100px;
+.ol-geolocation-marker {
+  width: 22px;
+  height: 22px;
+  background: url(libs/openlayers/geolocation_marker.png) center center no-repeat;
 }
-.ol-zoom {
-	right: .5em;
-	left: auto;
-	top: auto;
-  bottom: 0.5em;
+.ol-geolocation-marker.heading {
+  width: 22px;
+  height: 37px;
+  background: url(libs/openlayers/geolocation_marker_heading.png) center center no-repeat;
+}
+.ol-geolocation-info {
+  position: absolute;
+  top: 0.5em;
+  right: 0.5em;
+}
+.ol-mouse-position {
+  position: absolute;
+  top: 0.5em;
+  right: 0.5em;
+}
+.popover-content {
+  white-space: nowrap;
 }

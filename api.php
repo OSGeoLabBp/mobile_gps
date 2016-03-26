@@ -4,14 +4,14 @@ require('GeoJSONserver.php');
 $api = new GeoJSONserver(array(
 
   // Connection parameters
-  'HOST' => 'hostname',
+  'HOST' => 'localhost',
   'PORT' => '5432',
-  'DB'   => 'database',
-  'USER' => 'username',
-  'PASS' => 'password',
+  'DB'   => 'mobile_gps',
+  'USER' => 'postgres',
+  'PASS' => '',
   
   // Geometry settings
-  'tableSRID' => '23700',
+  'tableSRID' => '4326',
   'viewSRID' => '3857',
   'geomName' => 'geom',
 
@@ -45,7 +45,7 @@ $api = new GeoJSONserver(array(
           'comment:string'
       )
   ),
-  'authRequired' => true,
+  'authRequired' => false,
   'authRealm' => 'RESTAPI'
 ));
-$api->run();
+$api->start();
