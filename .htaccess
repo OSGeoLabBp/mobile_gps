@@ -1,9 +1,4 @@
-AddDefaultCharset UTF-8
-DirectoryIndex index.html
-Options -Indexes
-<IfModule mod_rewrite.c>
-  RewriteEngine On
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteRule api/(.*)$ api.php?url=$1 [QSA,NC,L]
-</IfModule>
+# redirect all requests to client directory
+# prevent any other directory from direct access
+RewriteEngine on
+RewriteRule ^(.*) client/$1 [L]

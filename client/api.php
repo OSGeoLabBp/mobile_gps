@@ -1,6 +1,6 @@
 <?php
 
-require('GeoJSONserver.php');
+require('../server/php/GeoJSONserver.php');
 $api = new GeoJSONserver(array(
 
   // Connection parameters
@@ -46,6 +46,6 @@ $api = new GeoJSONserver(array(
       )
   ),
   'authRequired' => false,
-  'authRealm' => 'RESTAPI'
+  'authRealm' => 'mobile_gps'
 ));
 $api->start();

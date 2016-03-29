@@ -14,7 +14,17 @@
 .ol-rotate {
   position: absolute;
   top: auto;
-  bottom: 4.5em;
+  bottom: 6em;
+}
+.ol-zoom-extent {
+  position: absolute;
+  top: auto;
+  left: auto;
+  right: 0.5em;
+  bottom: 4.1em;
+}
+.ol-zoom-extent .glyphicon {
+  padding-top: 2px;
 }
 .ol-save-feature {
   position: absolute;
@@ -34,12 +44,12 @@
 .ol-geolocation-marker {
   width: 22px;
   height: 22px;
-  background: url(libs/openlayers/geolocation_marker.png) center center no-repeat;
+  background: url(imgs/geolocation_marker.png) center center no-repeat;
 }
 .ol-geolocation-marker.heading {
   width: 22px;
   height: 37px;
-  background: url(libs/openlayers/geolocation_marker_heading.png) center center no-repeat;
+  background: url(imgs/geolocation_marker_heading.png) center center no-repeat;
 }
 .ol-geolocation-info {
   position: absolute;
@@ -53,4 +63,12 @@
 }
 .popover-content {
   white-space: nowrap;
+}
+.popover-content tr>td:first-child {
+  padding-right: 5px;
+}
+.footer {
+  background: #f8f8f8;
+  margin-top: 3em;
+  padding-top: 1em;
 }

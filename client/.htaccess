@@ -1,0 +1,11 @@
+AddDefaultCharset UTF-8
+DirectoryIndex index.html
+Options -Indexes
+
+# create clean URLs with Apache's rewrite function
+# let api.php handle URLs that starts with "api/"
+
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule api/(.*)$ api.php?url=$1 [QSA,NC,L]

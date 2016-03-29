@@ -4,7 +4,7 @@
 
 // Define national projection system
 // EPSG:4326 and EPSG:3857 already defined in OpenLayers
-proj4.defs("EPSG:23700","+title=HD72 EOV +proj=somerc +lat_0=47.14439372222222 +lon_0=19.04857177777778 +k_0=0.99993 +x_0=650000 +y_0=200000 +ellps=GRS67 +towgs84=52.17,-71.82,-14.9,0,0,0,0 +units=m +no_defs");
+proj4.defs("EPSG:23700", "+title=HD72 EOV +proj=somerc +lat_0=47.14439372222222 +lon_0=19.04857177777778 +k_0=0.99993 +x_0=650000 +y_0=200000 +ellps=GRS67 +towgs84=52.17,-71.82,-14.9,0,0,0,0 +units=m +no_defs");
 var eov = new ol.proj.Projection({
   code: 'EPSG:23700',
   extent: [421391.21, 48212.58, 934220.63, 366660.88],
@@ -41,6 +41,28 @@ var osmLayer = new ol.layer.Tile({
 });
 map.addLayer(osmLayer);
 
+// Declare a Vector layer with tracks from database
+var trackFeatures = new ol.Collection();
+var TracksLayer = new ol.layer.Vector({
+  source: new ol.source.Vector({
+    features: trackFeatures, // so we can direct access it
+    format: new ol.format.GeoJSON({
+      defaultDataProjection: 'EPSG:3857',
+      geometryName: 'geom'
+    }),
+    url: 'api/tracks'
+  }),
+  style: function (feature, resolution) {
+    return new ol.style.Style({
+      stroke: new ol.style.Stroke({
+        color: '#fa5654',
+        width: 3
+      })
+    });
+  }
+});
+map.addLayer(TracksLayer);
+
 // Declare a Vector layer with waypoints from database
 var waypointFeatures = new ol.Collection();
 var WaypointsLayer = new ol.layer.Vector({
@@ -60,66 +82,51 @@ var WaypointsLayer = new ol.layer.Vector({
 //    tileSize: [256, 256]
 //  }))
   }),
-  style: (function (feature, resolution) {
+  style: function (feature, resolution) {
     var label = feature.get('time_stamp') || '';
     return new ol.style.Style({
-      image: new ol.style.Circle({
-        fill: new ol.style.Fill({
-          color: 'black'
-        }),
-        radius: 5
+      image: new ol.style.Icon({
+        anchor: [0.5, 1], // percent
+        anchorOrigin: 'top-left',
+        src: 'imgs/map_marker.png'
       }),
       text: new ol.style.Text({
-        offsetY: -12,
+        text: label,
+        textAlign: 'left',
+        offsetX: 10,
         fill: new ol.style.Fill({
-          color: 'black'
+          color: '#fa5654'
         }),
-        text: label
+        stroke: new ol.style.Stroke({
+          color: 'white',
+          width: 1
+        })
       })
     });
-  })
+  }
 });
 map.addLayer(WaypointsLayer);
-
-// Declare a Vector layer with tracks from database
-var trackFeatures = new ol.Collection();
-var TracksLayer = new ol.layer.Vector({
-  source: new ol.source.Vector({
-    features: trackFeatures, // so we can direct access it
-    format: new ol.format.GeoJSON({
-      defaultDataProjection: 'EPSG:3857',
-      geometryName: 'geom'
-    }),
-    url: 'api/tracks'
-  }),
-  style: (function (feature, resolution) {
-    var label = Math.round(feature.getGeometry().getLength() || '0') + ' m';
-    return new ol.style.Style({
-      stroke: new ol.style.Stroke({
-        color: 'blue',
-        width: 1
-      }),
-      text: new ol.style.Text({
-        fill: new ol.style.Fill({
-          color: 'blue'
-        }),
-        text: label
-      })
-    });
-  })
-});
-map.addLayer(TracksLayer);
-
 
 /*
  * HANDLE USER ACTIONS WITH INTERACTIONS, OVERLAYS AND CONTROLS
  */
 
+// Extent control
+var extentButton = document.createElement('i');
+extentButton.className = 'glyphicon glyphicon-fullscreen';
+var extentControl = new ol.control.ZoomToExtent({
+  label: extentButton,
+  extent: (TracksLayer.getSource().getExtent()[0] === Infinity
+           ? ol.proj.get('EPSG:3857').getExtent()
+           : TracksLayer.getSource().getExtent())
+});
+map.addControl(extentControl);
+
 // Feature info overlay for selection
 var featureInfo = new ol.Overlay({
   positioning: 'center-center',
   element: document.createElement('div'),
-  stopEvent: false
+  stopEvent: true
 });
 map.addOverlay(featureInfo);
 
@@ -129,55 +136,77 @@ var selectInteraction = new ol.interaction.Select({
   layers: [TracksLayer, WaypointsLayer],
   features: selectedFeatures
 });
-selectInteraction.on('select', function(evt){
-  console.log(evt);
-  var feature = evt.selected[0];
-  var html = [
-    'ID: ' + feature.get('id'),
-    'Time: ' + feature.get('time_stamp'),
-    'Group ID: ' + feature.get('group_id'),
-    'Visibility: ' + feature.get('visibility'),
-  ].join('<br>');
-  
-  var coordinate;
-  if (feature.getGeometry() instanceof ol.geom.LineString) {
-    coordinate = feature.getGeometry().getCoordinateAt(0.5);
-  } else {
-    coordinate = feature.getGeometry().getFirstCoordinate();
-  }
-  featureInfo.setPosition(coordinate);
-  
-  // Bootstrap popover
-  var bsPopover = featureInfo.getElement();
-  $(bsPopover).popover('destroy');
-  $(bsPopover).popover({
-    'placement': 'top',
-    'animation': false,
-    'html': true,
-    'content': html
-  });
-  $(bsPopover).popover('show');
-  map.on('click', function(){ 
+selectInteraction.on('select', function (evt) {
+  // FIXME: hardcoded groups and visibilitys
+  var pointGroupArray = ['none','general'];
+  var trackGroupArray = ['none','general'];
+  var visibilityArray = ['private','protected','public'];
+  var feature = evt.selected[0], coordinate, title, html;
+  if (feature) {
+    if (feature.getGeometry() instanceof ol.geom.LineString) {
+      coordinate = feature.getGeometry().getCoordinateAt(0.5);
+      title = 'Track';
+      html = [
+        '<tr><td>ID:</td><td>' + feature.get('id') + '</td></tr>',
+        '<tr><td>Time:</td><td>' + feature.get('time_stamp') + '</td></tr>',
+        '<tr><td>Length:</td><td>' + feature.getGeometry().getLength().toFixed(2) + ' m</td></tr>',
+        '<tr><td>Visibility:</td><td>' + visibilityArray[feature.get('visibility')] + '</td></tr>',
+        '<tr><td>Group:</td><td>' + trackGroupArray[feature.get('group_id')] + '</td></tr>',
+        '<tr><td>Comment:</td><td><textarea style="width:100%;height:2em">' + feature.get('comment') + '</textarea></td></tr>'
+      ].join('');
+    } else {
+      coordinate = feature.getGeometry().getLastCoordinate();
+      var coordinateWGS87 = ol.proj.transform(coordinate,'EPSG:3857','EPSG:4326');
+      title = 'Waypoint';
+      html = [
+        '<tr><td>ID:</td><td>' + feature.get('id') + '</td></tr>',
+        '<tr><td>Time:</td><td>' + feature.get('time_stamp') + '</td></tr>',
+        '<tr><td>Position:</td><td>' + ol.coordinate.toStringHDMS(coordinateWGS87) + '</td></tr>',
+        '<tr><td>Visibility:</td><td>' + visibilityArray[feature.get('visibility')] + '</td></tr>',
+        '<tr><td>Group:</td><td>' + pointGroupArray[feature.get('group_id')] + '</td></tr>',
+        '<tr><td>Comment:</td><td><textarea style="width:100%;height:2em">' + feature.get('comment') + '</textarea></td></tr>'
+      ].join('');
+    }
+    featureInfo.setPosition(coordinate);
+    
+    // Bootstrap popover
+    var bsPopover = featureInfo.getElement();
     $(bsPopover).popover('destroy');
-  });
+    $(bsPopover).popover({
+      'placement': 'top',
+      'animation': false,
+      'html': true,
+      'title': title,
+      'content': '<table>' + html + '</table>'
+    });
+    $(bsPopover).popover('show');
+    $('body').not('.popover').click(function () {
+      $(bsPopover).popover('destroy');
+    });
+    $(bsPopover).find('textarea').change(function () {
+      alert($(this).val());
+      feature.set('comment', $(this).val());
+    });
+  }
 });
 map.addInteraction(selectInteraction);
 
 // Modify Interaction - modify features on the map and database also
 var modifyInteraction = new ol.interaction.Modify({
   features: selectedFeatures,
-  deleteCondition: function(event) {
+  deleteCondition: function (event) {
     return ol.events.condition.shiftKeyOnly(event) &&
         ol.events.condition.singleClick(event);
   }
 });
-modifyInteraction.on('modifyend', function(evt){
-  evt.features.forEach(function(feature){
+modifyInteraction.on('modifyend', function (evt) {
+  window.uj = evt;
+  evt.features.forEach(function (feature) {
     if (feature.getGeometry() instanceof ol.geom.LineString) {
-      dbQuery('update', 'tracks/' + feature.get('id'), feature);
+      dbQuery('update', 'api/tracks/' + feature.get('id'), feature);
       // TODO reverse function on DB error
     } else {
-      dbQuery('update', 'waypoints/' + feature.get('id'), feature);
+      dbQuery('update', 'api/waypoints/' + feature.get('id'), feature);
       // TODO reverse function on DB error
     }
   });
@@ -190,20 +219,19 @@ var saveDiv = document.createElement('div');
 saveDiv.className = 'ol-save-feature ol-unselectable ol-control';
 var saveButton = document.createElement('button');
 saveButton.title = 'Save tracks and waypoints';
-saveButton.textContent = 'S';
-saveButton.className = '';
-saveButton.addEventListener('click', function() {
+saveButton.innerHTML = '<i class="glyphicon glyphicon-floppy-save"></i>';
+saveButton.addEventListener('click', function () {
   // when feature has no id, then this is a new feature
-  waypointFeatures.forEach(function(feature){
+  waypointFeatures.forEach(function (feature) {
     if (feature.get('id') === undefined) {
-      dbQuery('create', 'waypoints', feature, function(data){
+      dbQuery('create', 'api/waypoints', feature, function (data) {
         feature.set('id', data.id); // prevent infinite insert loops
       });
     }
   });
-  trackFeatures.forEach(function(feature){
+  trackFeatures.forEach(function (feature) {
     if (feature.get('id') === undefined) {
-      dbQuery('create', 'tracks', feature, function(data){
+      dbQuery('create', 'api/tracks', feature, function (data) {
         feature.set('id', data.id); // prevent infinite insert loops
       });
     }
@@ -219,61 +247,36 @@ map.addControl(saveControl);
 var deleteDiv = document.createElement('div');
 deleteDiv.className = 'ol-delete-feature ol-unselectable ol-control';
 var deleteButton = document.createElement('button');
-deleteButton.title = 'Delete selected features';
-deleteButton.textContent = 'X';
-deleteButton.className = '';
-deleteButton.addEventListener('click', function() {
+deleteButton.title = 'Remove selected features';
+deleteButton.innerHTML = '<i class="glyphicon glyphicon-trash"></i>';
+deleteButton.addEventListener('click', function () {
   if (confirm('The selected feature(s) will be removed. Are you sure?')) {
-    selectedFeatures.forEach(function(feature){
+    selectedFeatures.forEach(function (feature) {
       if (feature.getGeometry() instanceof ol.geom.LineString) {
-        dbQuery('delete', 'tracks/' + feature.get('id'), null, function(){
+        if (feature.get('id') === undefined) {
           trackFeatures.remove(feature);
-        });
+        } else {
+          dbQuery('delete', 'api/tracks/' + feature.get('id'), null, function () {
+            trackFeatures.remove(feature);
+          });
+        }
       } else {
-        dbQuery('delete', 'waypoints/' + feature.get('id'), null, function(){
+        if (feature.get('id') === undefined) {
           waypointFeatures.remove(feature);
-        });
+        } else {
+          dbQuery('delete', 'api/waypoints/' + feature.get('id'), null, function () {
+            waypointFeatures.remove(feature);
+          });
+        }
       }
     });
+    selectedFeatures.clear(); // this holds a copy from original features
   }
 }, false);
 deleteDiv.appendChild(deleteButton);
 //map.getViewport().appendChild(deleteDiv);
 var deleteControl = new ol.control.Control({element: deleteDiv});
 map.addControl(deleteControl);
-
-
-// Function to handle AJAX requests
-function dbQuery(method, url, feature, callback) {
-  var methodArray = {read: 'GET', create: 'POST', update: 'PUT', delete: 'DELETE'};
-  method = methodArray[method] || 'GET';
-  var data = undefined;
-  if (feature instanceof ol.Feature) {
-    var geojson = new ol.format.GeoJSON();
-    data = feature.getProperties();
-    data.geom = geojson.writeGeometry(feature.getGeometry());
-  }
-  $.ajax({
-    url: url,
-    data: data,
-    method: method,
-    dataType: 'json', // response
-    success: function(data, textStatus, xhr){
-      if (typeof callback === 'function') {
-        callback(data);
-      }
-      // We have data.id or data.rowCount
-      // but only bad news is real news...
-      if (data.message) {
-        alert(data.message);
-      }
-    },
-    error: function (xhr, textStatus, error){
-      alert(textStatus);
-    }
-  });
-}
-
 
 /*
  * GEOLOCATION API
@@ -319,7 +322,7 @@ var geolocation = new ol.Geolocation({
 });
 
 // Listen to position changes
-geolocation.on('change', function() {
+geolocation.on('change', function () {
   var position = geolocation.getPosition();
   var accuracy = geolocation.getAccuracy();
   var accuracyGeometry = geolocation.getAccuracyGeometry();
@@ -339,9 +342,9 @@ geolocation.on('change', function() {
     }
     heading = prevHeading + headingDiff;
   }
-  positions.appendCoordinate([position[0], position[0], heading, m]);
+  positions.appendCoordinate([position[0], position[1], heading, m]);
   
-  if (heading && speed) {
+  if (heading) {
     geolocationMarker.getElement().className = 'ol-geolocation-marker heading';
   } else {
     geolocationMarker.getElement().className = 'ol-geolocation-marker';
@@ -353,9 +356,10 @@ geolocation.on('change', function() {
   trackFeatures.push(lastTrack);
   var newWaypoint = new ol.Feature({
     'geometry': new ol.geom.Point(position),
-    'time_stamp': new Date().toISOString(),
-    'group_id': 0,
-    'visibility': 0
+    'time_stamp': new Date().toISOString().substr(0,19).replace('T', ''),
+    'group_id': 1,
+    'visibility': 1,
+    'comment': ''
   });
   waypointFeatures.push(newWaypoint);
   geolocationAccuracy.setGeometry(accuracyGeometry);
@@ -367,15 +371,15 @@ geolocation.on('change', function() {
   }
   var positionWGS87 = ol.proj.transform(position,'EPSG:3857','EPSG:4326');
   var html = [
-    'Position: ' + ol.coordinate.toStringHDMS(positionWGS87, 2),
-    'Accuracy: ' + accuracy + ' m',
-    'Heading: ' + Math.round(radToDeg(heading)) + '&deg;',
-    'Speed: ' + (speed * 3.6).toFixed(1) + ' km/h',
-    'Delta: ' + Math.round(deltaMean) + 'ms'
-  ].join('<br>');
-  geolocationInfoDiv.innerHTML = html;
+    '<tr><td>Position: </td><td>' + ol.coordinate.toStringHDMS(positionWGS87) + '</td></tr>',
+    '<tr><td>Accuracy: </td><td>' + accuracy + ' m</td></tr>',
+    '<tr><td>Heading: </td><td>' + Math.round(radToDeg(heading)) + '&deg;</td></tr>',
+    '<tr><td>Speed: </td><td>' + (speed * 3.6).toFixed(1) + ' km/h</td></tr>',
+    '<tr><td>Delta: </td><td>' + Math.round(deltaMean) + 'ms</td></tr>'
+  ].join('');
+  geolocationInfoDiv.innerHTML = '<table>' + html + '</table>';
 });
-geolocation.on('error', function(error) {
+geolocation.on('error', function (error) {
   alert(error.message);
 });
 
@@ -393,7 +397,7 @@ function mod(n) {
 }
 
 // change center and rotation before render
-// TODO or use the geolocationMarker autoPan option with autoPanAnimation
+// or use the geolocationMarker autoPan option with autoPanAnimation???
 var previousM = 0;
 map.beforeRender(function(map, frameState) {
   if (geolocateButton.className === 'active' && frameState !== null) {
@@ -402,23 +406,25 @@ map.beforeRender(function(map, frameState) {
     m = Math.max(m, previousM);
     previousM = m;
     // interpolate position along positions LineString
-    var c = positions.getCoordinateAtM(m, true);
-    console.log(positions);
-    if (c) {
+    var coordinate = positions.getCoordinateAtM(m, true);
+    if (coordinate) {
       // Recenters the view by putting the given coordinates
       // at 3/4 from the top or the screen.
       var view = frameState.viewState;
       var mapSize = map.getSize();
-      var rotation = -c[2];
-      var center = [
-        c[0] - Math.sin(rotation) * mapSize[1] * view.resolution * 1 / 4,
-        c[1] + Math.cos(rotation) * mapSize[1] * view.resolution * 1 / 4
+      // TODO: user speed instead
+      //var extent = geolocationAccuracy.getGeometry().getExtent();
+      //if (extent) {
+      //  var xResolution = ol.extent.getWidth(extent) / (mapSize[0] * 0.5);
+      //  var yResolution = ol.extent.getHeight(extent) / (mapSize[1] * 0.5);
+      //  view.resolution = Math.max(xResolution, yResolution);
+      //}
+      view.rotation = -coordinate[2];
+      view.center = [
+        coordinate[0] - Math.sin(-coordinate[2]) * mapSize[1] * view.resolution * 1 / 4,
+        coordinate[1] + Math.cos(-coordinate[2]) * mapSize[1] * view.resolution * 1 / 4
       ];
-      console.log(c);
-      console.log(center);
-      view.center = center;
-      view.rotation = rotation;
-      geolocationMarker.setPosition(c);
+      geolocationMarker.setPosition(coordinate);
     }
   }
   return true; // Force animation to continue
@@ -430,17 +436,17 @@ var geolocateDiv = document.createElement('div');
 geolocateDiv.className = 'ol-geolocate ol-unselectable ol-control';
 var geolocateButton = document.createElement('button');
 geolocateButton.title = 'Set tracking on / off';
-geolocateButton.textContent = 'G';
-geolocateButton.className = '';
+geolocateButton.innerHTML = '<i class="glyphicon glyphicon-screenshot"></i>';
 geolocateButton.addEventListener('click', function() {
   if (geolocateButton.className != 'active') {
     geolocateButton.className = 'active';
     geolocationInfoDiv.innerHTML = '';
     var newTrack = new ol.Feature({
       'geometry': new ol.geom.LineString([]),
-      'time_stamp': new Date().toISOString(),
-      'group_id': 0,
-      'visibility': 0
+      'time_stamp': new Date().toISOString().substr(0,19).replace('T', ''),
+      'group_id': 1,
+      'visibility': 1,
+      'comment': ''
     });
     trackFeatures.push(newTrack);
     geolocation.setTracking(true); // Start position tracking
@@ -460,3 +466,52 @@ geolocateDiv.appendChild(geolocateButton);
 //map.getViewport().appendChild(geolocateDiv);
 var geolocateControl = new ol.control.Control({element: geolocateDiv});
 map.addControl(geolocateControl);
+
+
+/**
+ * DATABASE CONNECTOR FUNCTION
+ * handle CRUD actions with AJAX requests
+ * @param {string} CRUD method, eg. create, read, update, delete
+ * @param {string} resource url
+ * @param {object} feature object
+ * @param {function} callback function with AJAX response object parameter
+ */
+function dbQuery(method, url, feature, callback) {
+  var methodArray = {
+    'read': 'GET',
+    'create': 'POST',
+    'update': 'PUT',
+    'delete': 'DELETE'
+  };
+  method = methodArray[method] || 'GET';
+  var data;
+  if (feature instanceof ol.Feature) {
+    var geojson = new ol.format.GeoJSON();
+    data = feature.getProperties();
+    data.geom = geojson.writeGeometry(feature.getGeometry());
+    data.geometry = null;
+  }
+  $.ajax({
+    url: url,
+    data: data,
+    method: method,
+    dataType: 'json', // response
+    success: function (data, textStatus, xhr) {
+      // We have data.id and data.rowCount, but only bad news is real news
+      if (data.message) {
+        alert(data.message);
+      }
+      // call callback function when provided, and pass data as attribute
+      if (typeof callback === 'function') {
+        callback(data);
+      }
+    },
+    error: function (xhr, textStatus, error) {
+      if (xhr.responseJSON && xhr.responseJSON.message) {
+        alert(xhr.responseJSON.message);
+      } else {
+        alert(xhr.responseText);
+      }
+    }
+  });
+}

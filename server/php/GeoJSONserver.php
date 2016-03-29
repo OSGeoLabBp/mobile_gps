@@ -84,7 +84,6 @@ class GeoJSONserver {
         // http://php.net/manual/en/class.pdo.php
         try {
             $this->db = new PDO('pgsql:host=' . $this->options['HOST'] . ';port=' . $this->options['PORT'] . ';dbname=' . $this->options['DB'], $this->options['USER'], $this->options['PASS']);
-            $this->db->exec("set names utf8");
         } catch (PDOException $e) {
             $this->response( $e->getMessage(), 500);
             return;
@@ -93,6 +92,8 @@ class GeoJSONserver {
         // Basic authentication
         if ($this->options['authRequired']) {
             $this->user = $this->authenticate($this->options['authRealm']);
+        } else {
+            $this->user = array('id' => 1); // fake default user
         }
     }
     
@@ -240,7 +241,7 @@ class GeoJSONserver {
         
         // Check user rights
         if (isset($this->user['id'])) {
-            $where[] = 'user = ' . $this->user['id'];
+            $where[] = 'user_id = ' . $this->user['id'];
         }
       
         // Other filters
@@ -302,7 +303,7 @@ class GeoJSONserver {
         $tableSRID = isset($opt_options['tableSRID']) ? $opt_options['tableSRID'] : $this->options['tableSRID'];
         
         // Chechek requested table in writeable tables list
-        if (!in_array($table, $writeable)) {
+        if (!in_array($table, array_keys($writeable))) {
             $this->response('Table not found or allowed.', 404);
             return false;
         }
@@ -313,6 +314,7 @@ class GeoJSONserver {
         $types = array();
         foreach ($writeable[$table] as $attribute) {
             $attribute = explode(':', $attribute);
+            if ($attribute[0] == 'id') continue; // ID is serial
             $columns[] = $attribute[0];
             $types[] = isset($attribute[1]) ? $attribute[1] : 'string';
             if ($attribute[0] == $geomName) {
@@ -325,15 +327,16 @@ class GeoJSONserver {
         // Create the SQL query
         $sql = 'INSERT INTO ' . $table . ' ( ' . implode(', ', $columns) . ' ) VALUES ( ' . implode(', ', $values) . ' )';
         $query = $this->db->prepare($sql);
-
+      
         // Grant user rights
         if (isset($this->user['id'])) {
-            $query->bindParam(':user_id', $this->user['id']);
-            unset($request['user_id']); // just in case
+            // overwrite the requested data
+            $request['user_id'] = $this->user['id'];
         }
-        
+      
         // Loop through required columns
         for ($i = 0; $i < count($columns); $i++) {
+            if (!isset($columns[$i]) || !isset($types[$i])) continue;
             $this->bindParamFromRequest($query, $columns[$i], $request, $types[$i]);
         }
 
@@ -344,7 +347,7 @@ class GeoJSONserver {
             return false;
         }
 
-        return array('id' => $query->lastInsertId());
+        return array('id' => $this->db->lastInsertId());
     }
     
     /**
@@ -363,7 +366,7 @@ class GeoJSONserver {
         $tableSRID = isset($opt_options['tableSRID']) ? $opt_options['tableSRID'] : $this->options['tableSRID'];
         
         // Chechek requested table in writeable tables list
-        if (!in_array($table, $writeable)) {
+        if (!in_array($table, array_keys($writeable))) {
             $this->response('Table not found or allowed.', 404);
             return false;
         }
@@ -386,18 +389,19 @@ class GeoJSONserver {
         }
         
         // Create the SQL query
-        $sql = 'UPDATE ' . $table . ' SET ' . $columns_and_values . ' WHERE id = :id';
+        $sql = 'UPDATE ' . $table . ' SET ' . implode(', ', $columns_and_values) . ' WHERE id = :id';
         $query = $this->db->prepare($sql);
         $query->bindParam(':id', $id);
 
         // Grant user rights
         if (isset($this->user['id'])) {
-            $query->bindParam(':user_id', $this->user['id']);
-            unset($request['user_id']); // just in case
+            // overwrite the requested data
+            $request['user_id'] = $this->user['id'];
         }
         
         // Loop through required columns
         for ($i = 0; $i < count($columns); $i++) {
+            if (!isset($columns[$i]) || !isset($types[$i])) continue;
             $this->bindParamFromRequest($query, $columns[$i], $request, $types[$i]);
         }
         
@@ -421,9 +425,9 @@ class GeoJSONserver {
     public function delete($table, $id, $opt_options = '') {
       
         $writeable = isset($opt_options['writeable']) ? $opt_options['writeable'] : $this->options['writeable'];
-        
+      
         // Chechek requested table in writeable tables list
-        if (!in_array($table, $writeable)) {
+        if (!in_array($table, array_keys($writeable))) {
             $this->response('Table not found or allowed.', 404);
             return false;
         }
@@ -478,7 +482,8 @@ class GeoJSONserver {
                 $value = date('Y-m-d H:i:s', strtotime($value));
                 break;
             case 'timestamp':
-                $value = strtotime($value);
+                // YYYY-MM-DDTHH:ii:ss
+                $value = date('Y-m-d H:i:s', strtotime(substr($value, 0, 19)));
                 break;
             case 'json':
                 // enabled: a-zA-Z0-9_ [](){}.,\'"-:+
@@ -495,7 +500,6 @@ class GeoJSONserver {
         if ($value == '') {
             $value = null;
         }
-      
         // Bind parameters (escape quotes automatically) to prevent SQL injection
         return $query->bindParam(':'.$parameter, $value);
     }

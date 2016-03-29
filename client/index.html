@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"> 
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+
+    <title>Mobile GPS project</title>
+    <meta name="description" content="Collecting GPS coordinates from mobil phones/tablets">
+    <meta name="author" content="">
+    
+    <link rel="icon" href="favicon.ico">
+    <link rel="stylesheet" href="libs/openlayers/ol.css">
+    <link rel="stylesheet" href="libs/bootstrap/css/bootstrap.min.css">
+    <!-- TODO: CDN urls like https://cdnjs.cloudflare.com/ajax/libs/ ??? -->
+    <link rel="stylesheet" href="map.css">
+    
+    <!-- Old browser support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+  
+    <nav class="navbar navbar-default navbar-fixed-top">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="#top">Mobile GPS project</a>
+        </div>
+        <div id="navbar" class="collapse navbar-collapse">
+          <p class="navbar-text">Collecting GPS coordinates from mobil phones/tablets</p>
+          <ul class="nav navbar-nav navbar-right">
+            <li><a href="#about">About</a></li>
+            <li><a href="https://github.com/OSGeoLabBp/mobile_gps"><i class="glyphicon glyphicon-download-alt"></i> GitHub</a></li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+    
+    <div class="container" id="top" style="padding-top:6em">
+      <div class="row">
+        <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12">
+          <div id="map" class="map"></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="container" id="about" style="padding-top:3em">
+      <div class="row">
+        <div class="col-xs-12 col-sm-12 col-md-9 col-lg-9">
+          <h2>Project proposal</h2>
+          <p>The aim of the project to create a small application to collect and display user positions in their browser on mobile phones, tablets. It is so simple that students can understand its structure easily and can add new functionatily.</p>
+          <p>A client-server solution is planed. Client side uses HTML 5 Geolocation framework to get position and sends the position to server using HTTP GET, it is operating system independent (Android, IOS, WIN mobile platforms are supported).</p>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-xs-12 col-sm-12 col-md-6 col-lg-6">
+        <h3><i class="glyphicon glyphicon-check"></i> Features</h3>
+        <ul>
+          <li>view waypoints and tracks in browser</li>
+          <li>add new waypoint to actual position</li>
+          <li>collect multiple tracks with start and stop tracking</li>
+          <li>store waypoints and tracks in PostGIS database</li>
+          <li>delete waypoints and erase tracks</li>
+          <li>center and rotate map along tracks</li>
+          </ul>
+        </div>
+        <div class="col-xs-12 col-sm-12 col-md-6 col-lg-6">
+          <h3><i class="glyphicon glyphicon-wrench"></i> Software components</h3>
+          <ul>
+            <li>HTML5 &amp; CSS3 UI based on the responsive Bootstrap 3 framework</li>
+            <li>JavaScript (ES5), jQuery and AJAX</li>
+            <li>OpenLayers 3 mapping library with <a href="http://openlayers.org/en/master/apidoc/ol.Geolocation.html">Geolocation API</a></li>
+            <li>PHP5 RESTful API on the server side</li>
+            <li>PostgreSQL database with PostGIS geospatial extension</li>
+          </ul>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-xs-12 col-sm-12 col-md-6 col-lg-6">
+          <h3><i class="glyphicon glyphicon-tasks"></i> Future plans</h3>
+          <ul>
+            <li>add new waypoint by click on the map</li>
+            <li>export/import waypoints in popular formats (GPX, KML, GeoJSON)</li>
+            <li>time range selection</li>
+            <li>user registration or Facebook login with OAuth2</li>
+            <li>acces right handling</li>
+            <li>UNM MapServer / GeoServer (WFS, WMS) support</li>
+            <li>Python and/or Node.js API</li>
+          </ul>
+        </div>
+        <div class="col-xs-12 col-sm-12 col-md-6 col-lg-6">
+          <h3><i class="glyphicon glyphicon-user"></i> Joinnig the project</h3>
+          <p>Volunters are welcome!</p>
+          <p>If you would like to connect the project as a developer, a tester or a document writer then</p>
+          <ul>
+            <li>make a <a href="http://github.com/" target="_blank">GitHub account</a> if you have not created one before</li>
+            <li>install a git client to your computer (Linux or Windows)</li>
+            <li>fork the <a href="https://github.com/OSGeoLabBp/mobile_gps">mobile_gps project</a> into your repository</li>
+            <li>clone the project from GitHub to your local machine</li>
+            <li>build a <a href="http://www.osgeo.org/" target="_blank">test anvironment</a> (Apache, PostgreSQL)</li>
+            <li>send us pull requests or issues on GitHub</li>
+           </ul>
+        </div>
+      </div>
+    </div>
+    
+    <footer class="footer">
+      <div class="container">
+        <p class="text-muted">Coded with <i class="glyphicon glyphicon-heart"></i> by OSGeo Lab Budapest. Maintained by the <a href="https://github.com/OSGeoLabBp" target="_blank">core team</a> with the help of <a href="https://github.com/OSGeoLabBp/mobile_gps/graphs/contributors" target="_blank">our contributors</a>.<br>
+        The project licensed under the <a href="https://tldrlegal.com/license/gnu-general-public-license-v2" target="_blank">GNU GENERAL PUBLIC LICENSE v2</a>.</p>
+      </div>
+    </footer>
+    
+    <!-- scripts are here, to speed up webpage -->
+    <!-- TODO: CDN urls like https://cdnjs.cloudflare.com/ajax/libs/ ??? -->
+    <script src="libs/jquery.min.js"></script>
+    <script src="libs/bootstrap/js/bootstrap.min.js"></script>
+    <script src="libs/proj4.js"></script>
+    <script src="libs/openlayers/ol.js"></script>
+    <script src="map.js"></script>
+    <script>
+    $(document).ready(function () {
+      // Smooth scroll between document parts
+      $('a[href^="#"]').click(function (e) {
+        e.preventDefault();
+        var target = this.hash;
+        $('html, body').stop().animate({
+          scrollTop: $(target).offset().top
+        }, 1000, 'swing', function () {
+	        window.location.hash = target;
+	    });
+      });
+    });
+    </script>
+    
+  </body>
+</html>
