@@ -1,0 +1,12 @@
+#!/bin/sh
+
+# UNM MapServer required!
+# Install it first, eg.: sudo apt-get install cgi-mapserver
+
+# To hide the mapfile location from the URL,
+# place this file to the cig-bin/ direcotry of your webserver.
+# Make it executeable with sudo chmod +x wms,
+# and set the relative mapfile url like as below.
+
+MAPSERV="/usr/lib/cgi-bin/mapserv"
+MS_MAPFILE="$PWD/../wms.map" exec ${MAPSERV}

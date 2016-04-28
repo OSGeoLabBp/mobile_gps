@@ -1,0 +1,22 @@
+# You need to edit /etc/apache/httpd.conf or something
+# equivalent config file in the sites-enabled subdir.
+# Find something like:
+
+# <Directory "/path/to/apache/cgi-bin">
+#   deny from all
+#   AllowOverride AuthConfig # enable here this .htaccess owerride
+#   Order allow,deny
+# </Directory>
+
+# And make soure, that .ht* files are not served as default.
+
+# At least enable the basic authentication for wms and wfs files.
+<Files ~ "\.(wfs|wms)$">
+  AuthType Basic
+  AuthName "Realm"
+  AuthUserFile .htpasswd
+  Require valid-user
+</Files>
+
+# Every line in the .htpasswd are a username:password combination.
+# To generate this file, use: htpasswd -c .htpasswd myusername

@@ -1,0 +1,113 @@
+
+MAP # Start of map file -------------------------
+
+  NAME "Mobile GPS project"
+  EXTENT 639600 253400 640350 253800 #EOV
+  SIZE 300 200
+  IMAGETYPE JPEG
+
+  PROJECTION # ----------------------------------
+    "init=epsg:23700" #EOV
+  END # -----------------------------------------
+
+  WEB # -----------------------------------------
+    METADATA
+      "wms_title" "Mobile GPS project"
+      "wfs_title" "Mobile GPS project"
+      "wfs_contact" "postmaster@localhost"
+      "wms_attribution_title" "OSGeoLab BP"
+      "wfs_attribution_title" "OSGeoLab BP"
+      "wms_onlineresource" "http://localhost/cgi-bin/wms"
+      "wfs_onlineresource" "http://localhost/cgi-bin/wfs"
+      "tinyows_onlineresource" "http://localhost/cgi-bin/wfs"
+      "tinyows_schema_dir" "/usr/local/share/tinyows/schema/"
+      "wms_srs" "epsg:23700 epsg:4326 epsg:3857"
+      "wfs_srs" "epsg:23700 epsg:4326 epsg:3857"
+      "wms_feature_info_mime_type" "text/html"
+      "wfs_getfeature_formatlist" "gml,geojson"
+      "wms_enable_request" "*"
+      "wfs_enable_request" "*"
+    END
+  END # -----------------------------------------
+
+  OUTPUTFORMAT # --------------------------------
+    NAME "geojson"
+    DRIVER "OGR/GEOJSON"
+    MIMETYPE "application/json; subtype=geojson"
+    FORMATOPTION "STORAGE=stream"
+    FORMATOPTION "FORM=SIMPLE"
+  END # -----------------------------------------
+
+  SYMBOL # --------------------------------------
+    NAME "circle"
+    TYPE ellipse
+    POINTS
+      1 1
+    END
+    FILLED true
+    ANCHORPOINT 0.5 0.5
+  END # -----------------------------------------
+
+  LAYER # ---------------------------------------
+    NAME "waypoints"
+    CONNECTIONTYPE postgis
+    CONNECTION "host=localhost port=5432 dbname=mobile_gps user=postgres password="
+    DATA "geom from waypoints using srid=3857 using unique gid"
+    TYPE POINT
+    TEMPLATE "waypoints.html"
+    TOLERANCE 3
+    METADATA
+      'wms_title' "waypoints"
+      'wfs_title' "waypoints"
+      'wfs_namespace_uri' 'http://www.tinyows.org/'
+      'wfs_srs' 'epsg:23700 epsg:4326 epsg:3857'
+      'wfs_featureid' 'id'
+      'gml_featureid' 'id'
+      'gml_include_items' 'all'
+      'tinyows_table'  "waypoints"
+      'tinyows_writable' '1'
+      'tinyows_retrievable' '1'
+    END
+    PROJECTION
+      "init=epsg:3857"
+    END
+    CLASS
+      STYLE
+        COLOR 255 100 100
+      END
+    END
+    DUMP TRUE
+  END # -----------------------------------------
+
+  LAYER # ---------------------------------------
+    NAME "tracks"
+    CONNECTIONTYPE postgis
+    CONNECTION "host=localhost port=5432 dbname=mobile_gps user=postgres password="
+    DATA "geom from tracks using srid=3857 using unique gid"
+    TYPE POINT
+    TEMPLATE "tracks.html"
+    TOLERANCE 3
+    METADATA
+      'wms_title' "tracks"
+      'wfs_title' "tracks"
+      'wfs_namespace_uri' 'http://www.tinyows.org/'
+      'wfs_srs' 'epsg:23700 epsg:4326 epsg:3857'
+      'wfs_featureid' 'id'
+      'gml_featureid' 'id'
+      'gml_include_items' 'all'
+      'tinyows_table'  "tracks"
+      'tinyows_writable' '1'
+      'tinyows_retrievable' '1'
+    END
+    PROJECTION
+      "init=epsg:3857"
+    END
+    CLASS
+      STYLE
+        COLOR 255 100 100
+      END
+    END
+    DUMP TRUE
+  END # -----------------------------------------
+
+END # of Map File -------------------------------

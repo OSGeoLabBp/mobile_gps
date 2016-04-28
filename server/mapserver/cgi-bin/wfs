@@ -1,0 +1,13 @@
+#!/bin/sh
+
+# UNM MapServer/TinyOWS required!
+# Install it first, eg.: sudo apt-get install tinyows
+
+# To hide the mapfile location from the URL,
+# place this file to the cig-bin/ direcotry of your webserver.
+# Make it executeable with sudo chmod +x wfs,
+# and set the relative mapfile url like as below.
+
+TINYOWS_CONFIG_FILE="$PWD/../wfs.xml"
+export TINYOWS_CONFIG_FILE
+/usr/lib/cgi-bin/tinyows

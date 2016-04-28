@@ -1,0 +1,34 @@
+<tinyows
+	online_resource="http://localhost/cgi-bin/wfs"
+	schema_dir="/usr/local/share/tinyows/schema/"
+	log_level="0"
+	meter_precision="4"
+	degree_precision="6">
+
+	<pg host="localhost" user="postgres" password="" dbname="mobile_gps" port="5432"/>
+	<metadata name="TinyOWS Server" title="Mobile GPS project" />
+	<contact name="TinyOWS Server" site="http://localhost/" email="postmaster@localhost" />
+
+	<layer
+		name="waypoints"
+		title="waypoints"
+		ns_prefix="tows"
+		ns_uri="http://www.tinyows.org/"
+		srid="EPSG:23700,EPSG:4326,EPSG:3857"
+		pkey="id"
+		table="waypoints"
+		retrievable="1"
+		writable="1" />
+
+	<layer
+		name="tracks"
+		title="tracks"
+		ns_prefix="tows"
+		ns_uri="http://www.tinyows.org/"
+		srid="EPSG:23700,EPSG:4326,EPSG:3857"
+		pkey="id"
+		table="tracks"
+		retrievable="1"
+		writable="1" />
+
+</tinyows>
